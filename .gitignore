@@ -1,0 +1,19 @@
+# Local config, secrets, and data
+config.toml
+.streamlit/secrets.toml
+data/
+*.db
+logs/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/

@@ -1,0 +1,33 @@
+# Options Wheel Dashboard configuration.
+# Copy this file to `config.toml` and edit. `config.toml` is gitignored.
+# You can also change all of these from the Settings panel inside the app.
+
+[moomoo]
+# Host/port where moomoo OpenD is listening. Defaults match a local OpenD.
+host = "127.0.0.1"
+port = 11111
+
+# Which moomoo entity issued your account. The Singapore entity is FUTUSG.
+# Valid values: FUTUSG, FUTUINC (US), FUTUSECURITIES (HK), FUTUAU (Australia).
+security_firm = "FUTUSG"
+
+# Trading market to pull. US options -> "US".
+# Valid values: US, HK, CN.
+trd_market = "US"
+
+# Account environment. Start with SIMULATE (paper) to validate, then REAL.
+# Valid values: SIMULATE, REAL.
+trd_env = "SIMULATE"
+
+# How many days of deal history to pull on each sync.
+history_days = 365
+
+[fees]
+# moomoo deal data does not include commissions/fees, so we estimate net P&L
+# using a per-contract fee. Override per-trade in the app if you want exact
+# numbers from your statement. Typical all-in US options fee is ~1-2 USD/contract.
+per_contract = 1.50
+
+[app]
+# Currency label used in the UI (data is not converted).
+currency = "USD"

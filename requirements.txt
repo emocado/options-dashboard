@@ -1,0 +1,13 @@
+# Options Wheel Dashboard dependencies
+streamlit>=1.33
+pandas>=2.0
+plotly>=5.20
+
+# moomoo OpenAPI Python SDK (talks to the local moomoo OpenD gateway).
+# Required only for the "Sync from moomoo" feature; the dashboard runs fully
+# without it using manual entry. If install fails on your Python version,
+# the app still works in manual mode.
+moomoo-api>=10.4
+
+# Testing
+pytest>=8.0
