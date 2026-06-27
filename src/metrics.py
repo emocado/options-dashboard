@@ -101,6 +101,24 @@ def monthly_premium(deals: pd.DataFrame) -> pd.DataFrame:
     return out.sort_values("month")
 
 
+def monthly_realized(legs: pd.DataFrame) -> pd.DataFrame:
+    """Realized option P&L grouped by close month: [month, realized_pnl].
+
+    Same basis as :func:`cumulative_realized` (closed/expired/assigned option
+    legs, keyed on close date) but bucketed per calendar month instead of
+    accumulated, so you can see which months actually made money.
+    """
+    if legs.empty:
+        return pd.DataFrame(columns=["month", "realized_pnl"])
+    closed = legs[legs["status"].isin(["closed", "expired", "assigned"])].copy()
+    closed = closed.dropna(subset=["close_time"])
+    if closed.empty:
+        return pd.DataFrame(columns=["month", "realized_pnl"])
+    closed["month"] = closed["close_time"].dt.to_period("M").dt.to_timestamp()
+    out = closed.groupby("month", as_index=False)["realized_pnl"].sum()
+    return out.sort_values("month")
+
+
 def cumulative_realized(legs: pd.DataFrame) -> pd.DataFrame:
     """Cumulative realized option P&L over close dates: [date, cum_pnl]."""
     if legs.empty:

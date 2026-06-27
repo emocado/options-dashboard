@@ -47,7 +47,20 @@ CLOUD = os.environ.get("DASHBOARD_MODE") == "cloud"
 
 db.init_db()
 CFG = load_config()
-CUR = CFG.app.currency
+
+# Currency the stored figures are denominated in (US-market wheels => USD).
+BASE_CUR = CFG.app.currency
+# What the user is currently viewing in, plus the base->display factor. These
+# are reset each run by the sidebar toggle (session-only, never saved to config).
+DISPLAY_CUR = BASE_CUR
+FX_FACTOR = 1.0
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def _fx_rate(base: str, quote: str) -> tuple[float, bool]:
+    """Cached live FX lookup (1h TTL). Returns (rate, is_live)."""
+    from src import fx
+    return fx.fetch_rate(base, quote)
 
 
 # ---------------------------------------------------------------------------
@@ -57,7 +70,31 @@ CUR = CFG.app.currency
 def money(x) -> str:
     if x is None or (isinstance(x, float) and pd.isna(x)):
         return "—"
-    return f"{CUR} {x:,.2f}"
+    return f"{DISPLAY_CUR} {x * FX_FACTOR:,.2f}"
+
+
+def to_display_currency(df: pd.DataFrame, cols) -> pd.DataFrame:
+    """Scale the given money columns of ``df`` into the display currency.
+
+    A no-op when viewing in the base currency. Leaves market quotes (strike,
+    per-share price) untouched — only aggregate cash amounts are converted.
+    """
+    if df is None or df.empty or FX_FACTOR == 1.0:
+        return df
+    out = df.copy()
+    for c in cols:
+        if c in out.columns:
+            out[c] = pd.to_numeric(out[c], errors="coerce") * FX_FACTOR
+    return out
+
+
+def _table_currency_note(base_note: str = "") -> str:
+    """Append a conversion note to a table caption when not in the base currency."""
+    if FX_FACTOR == 1.0:
+        return base_note
+    note = (f"💱 Cash columns in {DISPLAY_CUR} at {FX_FACTOR:,.4f}; "
+            f"strikes/prices stay in {BASE_CUR}.")
+    return f"{base_note} {note}".strip()
 
 
 def pct(x) -> str:
@@ -89,6 +126,27 @@ def run_sync() -> None:
     st.sidebar.success("Sync complete.")
 
 
+def currency_toggle() -> None:
+    """Sidebar switch between the base currency and SGD (session-only).
+
+    Sets the module-level display currency / FX factor used by ``money()`` and
+    the chart/table converters. The choice is not persisted to config, so a
+    fresh load always starts in the base currency.
+    """
+    global DISPLAY_CUR, FX_FACTOR
+    alt = "SGD" if BASE_CUR != "SGD" else "USD"
+    choice = st.sidebar.radio(
+        "💱 Display currency", [BASE_CUR, alt], horizontal=True,
+        help=f"Figures are stored in {BASE_CUR}; switching converts them at the "
+             "live rate.",
+    )
+    rate, is_live = _fx_rate(BASE_CUR, choice)
+    DISPLAY_CUR, FX_FACTOR = choice, rate
+    if choice != BASE_CUR:
+        tag = "live" if is_live else "approx — rate fetch failed"
+        st.sidebar.caption(f"{BASE_CUR}→{choice} {rate:,.4f} ({tag})")
+
+
 def sidebar() -> list[str]:
     st.sidebar.title("🛞 Wheel Dashboard")
     if CLOUD:
@@ -106,6 +164,8 @@ def sidebar() -> list[str]:
         st.sidebar.caption(f"👤 {who}")
     if st.sidebar.button("Log out", use_container_width=True):
         auth.logout()
+
+    currency_toggle()
 
     if not CLOUD:
         if st.sidebar.button("🔄 Sync from moomoo", use_container_width=True):
@@ -132,7 +192,7 @@ def sidebar() -> list[str]:
                         moomoo=MoomooConfig(host=host, port=int(port), security_firm=firm,
                                             trd_market=market, trd_env=env, history_days=int(hist)),
                         fees=FeesConfig(per_contract=float(fee)),
-                        app=AppConfig(currency=CUR),
+                        app=AppConfig(currency=BASE_CUR),
                     ))
                     st.success("Saved. Rerun to apply.")
                     st.rerun()
@@ -175,37 +235,61 @@ def tab_overview(deals, legs, account, positions):
     c4.metric("Cash / buying power", f"{money(k['cash'])} / {money(k['power'])}")
 
     st.divider()
+    cur = DISPLAY_CUR
     left, right = st.columns(2)
 
     with left:
         st.subheader("Cumulative realized P&L")
-        cum = metrics.cumulative_realized(legs)
+        cum = to_display_currency(metrics.cumulative_realized(legs), ["cum_pnl"])
         if cum.empty:
             st.info("No closed trades yet.")
         else:
-            st.plotly_chart(px.line(cum, x="date", y="cum_pnl", markers=True),
-                            use_container_width=True)
+            st.plotly_chart(
+                px.line(cum, x="date", y="cum_pnl", markers=True,
+                        labels={"cum_pnl": f"Cumulative P&L ({cur})", "date": "Date"}),
+                use_container_width=True)
 
     with right:
+        st.subheader("Monthly realized P&L")
+        mr = to_display_currency(metrics.monthly_realized(legs), ["realized_pnl"])
+        if mr.empty:
+            st.info("No closed trades yet.")
+        else:
+            fig = px.bar(mr, x="month", y="realized_pnl",
+                         labels={"realized_pnl": f"Realized P&L ({cur})", "month": "Month"})
+            fig.update_traces(marker_color=[
+                "#2ca02c" if v >= 0 else "#d62728" for v in mr["realized_pnl"]])
+            st.plotly_chart(fig, use_container_width=True)
+
+    left, right = st.columns(2)
+    with left:
         st.subheader("Monthly premium income")
-        mp = metrics.monthly_premium(deals)
+        mp = to_display_currency(metrics.monthly_premium(deals), ["credit"])
         if mp.empty:
             st.info("No premium collected yet.")
         else:
-            st.plotly_chart(px.bar(mp, x="month", y="credit"), use_container_width=True)
+            st.plotly_chart(
+                px.bar(mp, x="month", y="credit",
+                       labels={"credit": f"Premium ({cur})", "month": "Month"}),
+                use_container_width=True)
 
-    left, right = st.columns(2)
     bt = metrics.by_ticker(deals, legs)
-    with left:
+    with right:
         st.subheader("Realized P&L by ticker")
         if bt.empty:
             st.info("No data.")
         else:
-            st.plotly_chart(px.bar(bt, x="underlying", y="realized_pnl"),
-                            use_container_width=True)
-    with right:
+            st.plotly_chart(
+                px.bar(to_display_currency(bt, ["realized_pnl"]),
+                       x="underlying", y="realized_pnl",
+                       labels={"realized_pnl": f"Realized P&L ({cur})",
+                               "underlying": "Ticker"}),
+                use_container_width=True)
+
+    left, _ = st.columns(2)
+    with left:
         st.subheader("Open capital by ticker")
-        open_cap = bt[bt["open_capital"] > 0]
+        open_cap = to_display_currency(bt[bt["open_capital"] > 0], ["open_capital"])
         if open_cap.empty:
             st.info("No open positions.")
         else:
@@ -234,8 +318,11 @@ def tab_open_positions(legs, positions):
                       "annualized_roc"]].rename(columns={
         "premium_collected": "premium", "market_val": "current value",
         "pl_val": "unrealized P&L", "annualized_roc": "ann. ROC"})
+    view = to_display_currency(
+        view, ["premium", "capital", "current value", "unrealized P&L"])
     st.dataframe(view, use_container_width=True, hide_index=True)
-    st.caption("Unrealized P&L / current value come straight from moomoo's last sync.")
+    st.caption(_table_currency_note(
+        "Unrealized P&L / current value come straight from moomoo's last sync."))
 
 
 def tab_history(legs):
@@ -249,8 +336,12 @@ def tab_history(legs):
                    "fees", "realized_pnl", "roc", "annualized_roc", "status"]].rename(
         columns={"premium_collected": "premium", "realized_pnl": "realized P&L",
                  "annualized_roc": "ann. ROC"})
+    view = to_display_currency(view, ["premium", "fees", "realized P&L"])
     st.dataframe(view.sort_values("close_time", ascending=False),
                  use_container_width=True, hide_index=True)
+    note = _table_currency_note()
+    if note:
+        st.caption(note)
 
 
 def tab_cycles(deals):
@@ -259,8 +350,11 @@ def tab_cycles(deals):
     if cycles.empty:
         st.info("No trades yet.")
         return
+    cycles = to_display_currency(
+        cycles, ["option_premium", "stock_pnl", "fees", "net_pnl"])
     st.dataframe(cycles, use_container_width=True, hide_index=True)
-    st.caption("share_balance ≠ 0 means a wheel is still open (you hold/owe shares).")
+    st.caption(_table_currency_note(
+        "share_balance ≠ 0 means a wheel is still open (you hold/owe shares)."))
 
 
 def tab_manual(deals):

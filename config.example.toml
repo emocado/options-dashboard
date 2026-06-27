@@ -29,5 +29,7 @@ history_days = 365
 per_contract = 1.50
 
 [app]
-# Currency label used in the UI (data is not converted).
+# Base currency your figures are stored/synced in (US-market wheels => USD).
+# The dashboard has a sidebar toggle to *view* in SGD, converting at the live
+# USD->SGD rate; that toggle is session-only and never written back here.
 currency = "USD"
