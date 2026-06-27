@@ -101,9 +101,11 @@ def sidebar() -> list[str]:
     else:
         st.sidebar.caption(f"Account env: **{CFG.moomoo.trd_env}** · {CFG.moomoo.security_firm}")
 
-    if st.session_state.get("authed") and st.sidebar.button("Log out", use_container_width=True):
-        st.session_state["authed"] = False
-        st.rerun()
+    who = auth.current_email()
+    if who:
+        st.sidebar.caption(f"👤 {who}")
+    if st.sidebar.button("Log out", use_container_width=True):
+        auth.logout()
 
     if not CLOUD:
         if st.sidebar.button("🔄 Sync from moomoo", use_container_width=True):

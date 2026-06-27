@@ -240,3 +240,55 @@ Logs go to `logs\sync_to_cloud.log`.
 > Data is only as fresh as the last successful sync (which needs OpenD running). For the
 > wheel that's fine — positions move over days/weeks — and the sidebar shows the last
 > sync time.
+
+---
+
+# Google sign-in (lock the cloud app to your account)
+
+Instead of the shared password, the cloud app can use **Google sign-in restricted to
+your email** — nicer on a phone and no secret to leak. When an `[auth]` block is present
+in the app's secrets the dashboard uses Google automatically; otherwise it falls back to
+the password. Anyone can *authenticate* with Google, but only emails in `ALLOWED_EMAILS`
+(and email-verified) are let in — everyone else is signed straight back out.
+
+### 1. Create a Google OAuth client
+1. [Google Cloud Console](https://console.cloud.google.com/) → create or pick a project.
+2. **APIs & Services → OAuth consent screen**: choose **External**, fill the basics, and
+   under **Test users** add your own Google address. (Leaving the app in "Testing" is
+   fine for personal use — only listed test users can sign in.)
+3. **APIs & Services → Credentials → Create credentials → OAuth client ID**:
+   - Application type: **Web application**.
+   - **Authorized redirect URIs** — add your app URL + `/oauth2callback`:
+     `https://<your-app>.streamlit.app/oauth2callback`
+     (also add `http://localhost:8501/oauth2callback` if you run it locally).
+4. Copy the **Client ID** and **Client secret**.
+
+### 2. Add the auth secrets
+Generate a random cookie secret:
+`python -c "import secrets; print(secrets.token_hex(32))"`
+
+In **Streamlit Cloud → your app → ⋮ → Settings → Secrets** (and in local
+`.streamlit/secrets.toml` if you also run locally), add:
+```toml
+ALLOWED_EMAILS = "weikhiang92000@gmail.com"   # comma-separated to allow more than one
+
+[auth]
+redirect_uri = "https://<your-app>.streamlit.app/oauth2callback"
+cookie_secret = "<random hex from above>"
+client_id = "<google client id>"
+client_secret = "<google client secret>"
+server_metadata_url = "https://accounts.google.com/.well-known/openid-configuration"
+```
+Keep your existing `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, and `DASHBOARD_MODE = "cloud"`.
+`APP_PASSWORD_HASH` is no longer needed once `[auth]` is set (it stays as the local
+fallback if you keep it).
+
+### 3. Redeploy
+Push the updated `requirements.txt` (it now pins `streamlit>=1.42` and adds `Authlib`),
+then **Reboot** the app in Streamlit Cloud so the new deps install. You'll get a **Sign
+in with Google** button; only allowlisted, verified emails get through.
+
+> **Security:** the `ALLOWED_EMAILS` check is what restricts *access* to you. If it's
+> empty the app fails **closed** (locks out everyone). Your Turso token still controls
+> database access separately, and for max safety the cloud app can use a **read-only**
+> Turso token (see step 1 of Cloud hosting).
