@@ -7,6 +7,7 @@ from a running moomoo OpenD gateway.
 
 from __future__ import annotations
 
+import os
 import uuid
 from datetime import date, datetime
 
@@ -22,6 +23,27 @@ from src.config import (
 from src.options import build_option_code
 
 st.set_page_config(page_title="Options Wheel Dashboard", page_icon="🛞", layout="wide")
+
+
+def _promote_secrets_to_env() -> None:
+    """On Streamlit Community Cloud, config lives in ``st.secrets`` (not env vars).
+
+    Promote the keys the Streamlit-free layers read from ``os.environ`` (the Turso
+    connection and the cloud-mode flag) so ``db`` can pick up the remote backend.
+    """
+    for key in ("TURSO_DATABASE_URL", "TURSO_AUTH_TOKEN", "DASHBOARD_MODE"):
+        try:
+            value = st.secrets.get(key)
+        except Exception:
+            value = None
+        if value:
+            os.environ.setdefault(key, str(value))
+
+
+_promote_secrets_to_env()
+# Cloud mode hides moomoo-only controls (Sync/Settings/Test) — OpenD is unreachable
+# from the cloud; data arrives via the local sync agent writing to Turso.
+CLOUD = os.environ.get("DASHBOARD_MODE") == "cloud"
 
 db.init_db()
 CFG = load_config()
@@ -49,9 +71,9 @@ def pct(x) -> str:
 # ---------------------------------------------------------------------------
 
 def run_sync() -> None:
-    from src import moomoo_client
+    from src import moomoo_client, sync_service
     try:
-        result = moomoo_client.sync(CFG)
+        messages = sync_service.sync_and_persist(CFG)
     except moomoo_client.MoomooUnavailable as exc:
         st.sidebar.error(str(exc))
         return
@@ -62,62 +84,62 @@ def run_sync() -> None:
         st.sidebar.error(f"Sync failed: {exc}")
         return
 
-    if result.deals:
-        db.upsert_deals(result.deals)
-    db.replace_positions(result.positions)
-    if result.account:
-        db.add_account_snapshot(
-            datetime.now().isoformat(timespec="seconds"),
-            result.account["net_asset"], result.account["cash"],
-            result.account["power"],
-        )
-    for msg in result.messages:
+    for msg in messages:
         st.sidebar.write("• " + msg)
     st.sidebar.success("Sync complete.")
 
 
 def sidebar() -> list[str]:
     st.sidebar.title("🛞 Wheel Dashboard")
-    st.sidebar.caption(f"Account env: **{CFG.moomoo.trd_env}** · {CFG.moomoo.security_firm}")
+    if CLOUD:
+        snap = db.latest_account_snapshot()
+        ts = snap.get("ts") if snap else None
+        st.sidebar.caption(
+            f"📅 Last synced: {ts.replace('T', ' ')}" if ts
+            else "No sync yet — run the sync agent on your PC."
+        )
+    else:
+        st.sidebar.caption(f"Account env: **{CFG.moomoo.trd_env}** · {CFG.moomoo.security_firm}")
 
     if st.session_state.get("authed") and st.sidebar.button("Log out", use_container_width=True):
         st.session_state["authed"] = False
         st.rerun()
 
-    if st.sidebar.button("🔄 Sync from moomoo", use_container_width=True):
-        with st.spinner("Talking to moomoo OpenD…"):
-            run_sync()
+    if not CLOUD:
+        if st.sidebar.button("🔄 Sync from moomoo", use_container_width=True):
+            with st.spinner("Talking to moomoo OpenD…"):
+                run_sync()
 
-    with st.sidebar.expander("⚙️ Settings"):
-        with st.form("settings_form"):
-            host = st.text_input("OpenD host", CFG.moomoo.host)
-            port = st.number_input("OpenD port", value=CFG.moomoo.port, step=1)
-            firm = st.selectbox("Security firm", SECURITY_FIRMS,
-                                index=SECURITY_FIRMS.index(CFG.moomoo.security_firm)
-                                if CFG.moomoo.security_firm in SECURITY_FIRMS else 0)
-            market = st.selectbox("Trade market", TRD_MARKETS,
-                                  index=TRD_MARKETS.index(CFG.moomoo.trd_market)
-                                  if CFG.moomoo.trd_market in TRD_MARKETS else 0)
-            env = st.selectbox("Trade env", TRD_ENVS,
-                               index=TRD_ENVS.index(CFG.moomoo.trd_env)
-                               if CFG.moomoo.trd_env in TRD_ENVS else 0)
-            hist = st.number_input("History days to sync", value=CFG.moomoo.history_days, step=30)
-            fee = st.number_input("Fee per contract", value=float(CFG.fees.per_contract), step=0.25)
-            if st.form_submit_button("Save settings"):
-                save_config(Config(
-                    moomoo=MoomooConfig(host=host, port=int(port), security_firm=firm,
-                                        trd_market=market, trd_env=env, history_days=int(hist)),
-                    fees=FeesConfig(per_contract=float(fee)),
-                    app=AppConfig(currency=CUR),
-                ))
-                st.success("Saved. Rerun to apply.")
-                st.rerun()
+        with st.sidebar.expander("⚙️ Settings"):
+            with st.form("settings_form"):
+                host = st.text_input("OpenD host", CFG.moomoo.host)
+                port = st.number_input("OpenD port", value=CFG.moomoo.port, step=1)
+                firm = st.selectbox("Security firm", SECURITY_FIRMS,
+                                    index=SECURITY_FIRMS.index(CFG.moomoo.security_firm)
+                                    if CFG.moomoo.security_firm in SECURITY_FIRMS else 0)
+                market = st.selectbox("Trade market", TRD_MARKETS,
+                                      index=TRD_MARKETS.index(CFG.moomoo.trd_market)
+                                      if CFG.moomoo.trd_market in TRD_MARKETS else 0)
+                env = st.selectbox("Trade env", TRD_ENVS,
+                                   index=TRD_ENVS.index(CFG.moomoo.trd_env)
+                                   if CFG.moomoo.trd_env in TRD_ENVS else 0)
+                hist = st.number_input("History days to sync", value=CFG.moomoo.history_days, step=30)
+                fee = st.number_input("Fee per contract", value=float(CFG.fees.per_contract), step=0.25)
+                if st.form_submit_button("Save settings"):
+                    save_config(Config(
+                        moomoo=MoomooConfig(host=host, port=int(port), security_firm=firm,
+                                            trd_market=market, trd_env=env, history_days=int(hist)),
+                        fees=FeesConfig(per_contract=float(fee)),
+                        app=AppConfig(currency=CUR),
+                    ))
+                    st.success("Saved. Rerun to apply.")
+                    st.rerun()
 
-    with st.sidebar.expander("🔌 Test connection"):
-        if st.button("Ping OpenD"):
-            from src import moomoo_client
-            ok, msg = moomoo_client.test_connection(CFG)
-            (st.success if ok else st.error)(msg)
+        with st.sidebar.expander("🔌 Test connection"):
+            if st.button("Ping OpenD"):
+                from src import moomoo_client
+                ok, msg = moomoo_client.test_connection(CFG)
+                (st.success if ok else st.error)(msg)
 
     deals = db.get_deals()
     tickers = sorted(deals["underlying"].dropna().unique()) if not deals.empty else []
@@ -341,8 +363,12 @@ def main():
     positions = db.get_positions()
 
     if deals.empty:
-        st.info("No trades yet. Click **🔄 Sync from moomoo** (with OpenD running) "
-                "or add trades in the **Manual** tab.")
+        st.info(
+            "No trades yet. Run the sync agent on your PC, or add trades in the "
+            "**Manual** tab." if CLOUD else
+            "No trades yet. Click **🔄 Sync from moomoo** (with OpenD running) "
+            "or add trades in the **Manual** tab."
+        )
 
     t1, t2, t3, t4, t5 = st.tabs(
         ["📊 Overview", "📌 Open Positions", "🧾 Trade History", "🛞 Wheel Cycles", "✍️ Manual"])

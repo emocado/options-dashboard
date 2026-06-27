@@ -1,0 +1,9 @@
+# Local / PC dependencies: everything in requirements.txt PLUS the moomoo SDK.
+# Install this on your PC (for the dashboard and the sync agent):
+#   pip install -r requirements-local.txt
+-r requirements.txt
+
+# moomoo OpenAPI Python SDK — talks to the local moomoo OpenD gateway. Only needed
+# where OpenD runs. It's imported lazily, so it's intentionally absent from the
+# cloud's requirements.txt to keep the Streamlit Community Cloud build lean/robust.
+moomoo-api>=10.4

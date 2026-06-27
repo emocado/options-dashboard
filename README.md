@@ -13,7 +13,7 @@ annualized ROC, win rate, capital deployed, and per-ticker wheel cycles.
 ## Quick start
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-local.txt
 python -m streamlit run app.py
 ```
 
@@ -24,9 +24,12 @@ moomoo sync below.
 > On Windows, if the `streamlit` command isn't on your PATH, always use
 > `python -m streamlit run app.py`.
 
-**Want it on your phone?** See [DEPLOY.md](DEPLOY.md) for a secure setup
-(Tailscale private VPN + an in-app password) — view it anywhere with no ports
-exposed. First, set a password with `python tools/set_password.py`.
+**Want it on your phone?** See [DEPLOY.md](DEPLOY.md) for two options, both free:
+- **Tailscale** — keep everything on your PC (max privacy); view over a private VPN.
+- **Cloud hosting** — host the UI on Streamlit Community Cloud reading from a free
+  Turso DB, with a small sync agent on your PC. View anytime, even with the PC asleep.
+
+Either way, set a dashboard password first with `python tools/set_password.py`.
 
 ---
 

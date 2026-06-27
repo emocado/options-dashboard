@@ -3,7 +3,15 @@
 Goal: view the dashboard on your phone from anywhere, with top-notch security and
 **no ports opened on your router**.
 
-## Why it runs on your PC (not the cloud)
+> **Two free ways to do this:**
+> - **Option A — Tailscale (this section):** the dashboard runs on your PC and is
+>   reachable over a private VPN. All data stays on your machine, but the PC must be on
+>   to view. Best for privacy.
+> - **Option B — Cloud hosting:** host the UI on Streamlit Community Cloud (free)
+>   reading from a free Turso DB, with a small sync agent on your PC. View anytime, even
+>   with the PC asleep. Jump to [**Cloud hosting**](#cloud-hosting-streamlit-community-cloud--turso).
+
+## Why Option A runs on your PC (not the cloud)
 
 The Sync feature talks to **moomoo OpenD on `127.0.0.1:11111`**, which only runs on
 your PC where you're logged into moomoo. So the dashboard must run on your PC too.
@@ -141,3 +149,94 @@ Re-run `python tools/set_password.py` and restart the app.
 ```powershell
 .\run_dashboard.ps1 -Mode local      # http://localhost:8501 on this PC only
 ```
+
+---
+
+# Cloud hosting (Streamlit Community Cloud + Turso)
+
+Host the **dashboard** for free in the cloud so you can open it from anywhere — even
+when your PC is off — while a small **sync agent** on your PC keeps the data fresh.
+
+**How it works:** your PC runs the sync (the only place moomoo OpenD can run) and writes
+the results to a free **Turso** database. The cloud dashboard reads from Turso. OpenD is
+never exposed to the internet.
+
+```
+PC (when on):  OpenD → tools/sync_to_cloud.py ─┐
+                                                ├─► Turso (free DB) ◄─ Streamlit Cloud (UI)
+manual entry (cloud or PC) ─────────────────────┘
+```
+
+> **Privacy note:** with this option your trade history and account NAV live in Turso
+> (a third party), behind your dashboard password. To keep *all* data on your own
+> machine, use **Option A (Tailscale)** above instead.
+
+### 1. Create a Turso database
+Install the Turso CLI (<https://docs.turso.tech>), then:
+```bash
+turso auth signup                          # free account
+turso db create options-dashboard
+turso db show options-dashboard --url      # -> libsql://...     (TURSO_DATABASE_URL)
+turso db tokens create options-dashboard   # -> the token        (TURSO_AUTH_TOKEN)
+```
+> **Optional hardening:** make a **read-only** token for the cloud app
+> (`turso db tokens create options-dashboard --read-only`) and keep a read-write token
+> only on your PC — do this if you'll just *view* on your phone. If you want to add
+> manual trades / tag assignments from your phone, give the cloud app a read-write token.
+
+### 2. Save the secrets on your PC
+Add these to `.streamlit/secrets.toml` (gitignored — never committed), next to your
+existing `APP_PASSWORD_HASH`:
+```toml
+APP_PASSWORD_HASH  = "pbkdf2_sha256$..."   # from tools/set_password.py
+TURSO_DATABASE_URL = "libsql://options-dashboard-<you>.turso.io"
+TURSO_AUTH_TOKEN   = "<your token>"
+```
+
+### 3. Install local deps and migrate your data
+```powershell
+pip install -r requirements-local.txt
+python tools/migrate_to_turso.py     # copies your existing data/dashboard.db up to Turso
+```
+
+### 4. Push the repo to GitHub (private)
+Secrets and `data/` are gitignored, so this is safe:
+```powershell
+git add -A; git commit -m "Add cloud hosting"; git push
+```
+
+### 5. Deploy on Streamlit Community Cloud
+- Go to <https://share.streamlit.io>, sign in with GitHub, **New app**, pick your repo
+  and `app.py`.
+- In **Advanced settings → Secrets**, paste (TOML):
+  ```toml
+  APP_PASSWORD_HASH  = "pbkdf2_sha256$..."
+  TURSO_DATABASE_URL = "libsql://options-dashboard-<you>.turso.io"
+  TURSO_AUTH_TOKEN   = "<read-only or read-write token>"
+  DASHBOARD_MODE     = "cloud"
+  ```
+- Deploy, open the public URL, and sign in with your dashboard password.
+  `DASHBOARD_MODE = "cloud"` hides the moomoo Sync/Settings controls (they can't reach
+  OpenD from the cloud) and shows a "Last synced" time instead.
+
+### 6. Schedule the sync agent on your PC
+Run it once to confirm it works (OpenD running and logged in):
+```powershell
+.\tools\sync_to_cloud.ps1
+```
+Then schedule it (at logon + every 6 hours). It logs and exits cleanly whenever OpenD
+isn't running, so off-hours runs are harmless:
+```powershell
+$act = New-ScheduledTaskAction -Execute "powershell.exe" `
+  -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$PWD\tools\sync_to_cloud.ps1`""
+$trg1 = New-ScheduledTaskTrigger -AtLogOn
+$trg2 = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Hours 6)
+Register-ScheduledTask -TaskName "OptionsDashboardSync" -Action $act -Trigger $trg1, $trg2 `
+  -Description "Push moomoo data to Turso for the cloud dashboard"
+```
+Remove it later with `Unregister-ScheduledTask -TaskName OptionsDashboardSync -Confirm:$false`.
+Logs go to `logs\sync_to_cloud.log`.
+
+> Data is only as fresh as the last successful sync (which needs OpenD running). For the
+> wheel that's fine — positions move over days/weeks — and the sidebar shows the last
+> sync time.

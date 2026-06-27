@@ -1,16 +1,25 @@
-"""SQLite persistence for the Options Wheel Dashboard.
+"""SQLite / libSQL persistence for the Options Wheel Dashboard.
 
 One row per fill lives in `deals` (from moomoo sync or manual entry). Account
 net-asset snapshots and the latest open-positions cache are stored separately so
 the dashboard still shows numbers when OpenD is offline.
+
+Two backends, chosen by environment:
+  * Default — a local SQLite file at ``DB_PATH`` (dev, offline, tests).
+  * Turso (libSQL) — when ``TURSO_DATABASE_URL`` is set, connect to a remote
+    libSQL database instead. This lets a cloud-hosted UI and the local sync
+    agent share one source of truth. Both backends speak DB-API 2.0 (``?``
+    placeholders, ``execute``/``executemany``/``fetchall``), so the queries
+    below are identical; only the connection differs.
 """
 
 from __future__ import annotations
 
+import os
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterable, Iterator
+from typing import Any, Iterable, Iterator
 
 import pandas as pd
 
@@ -77,11 +86,35 @@ def _ensure_data_dir() -> None:
     Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
 
 
-@contextmanager
-def get_conn() -> Iterator[sqlite3.Connection]:
+def _using_turso() -> bool:
+    return bool(os.environ.get("TURSO_DATABASE_URL"))
+
+
+def _connect():
+    """Open a backend connection: remote libSQL if configured, else local SQLite."""
+    url = os.environ.get("TURSO_DATABASE_URL")
+    if url:
+        try:
+            import libsql  # noqa: WPS433 (optional dep)
+        except ImportError as exc:  # pragma: no cover - depends on environment
+            raise RuntimeError(
+                "TURSO_DATABASE_URL is set but libsql is not installed. "
+                "Run `pip install libsql`."
+            ) from exc
+        # Remote-only connection: pass the libsql:// URL as the database name and
+        # the auth token. (No sync_url => no embedded replica, so the cloud
+        # container stays stateless and writes persist server-side immediately.)
+        return libsql.connect(database=url, auth_token=os.environ.get("TURSO_AUTH_TOKEN"))
+
     _ensure_data_dir()
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    return conn
+
+
+@contextmanager
+def get_conn() -> Iterator[Any]:
+    conn = _connect()
     try:
         yield conn
         conn.commit()
@@ -89,9 +122,25 @@ def get_conn() -> Iterator[sqlite3.Connection]:
         conn.close()
 
 
+def _read_df(conn, sql: str, params: tuple = ()) -> pd.DataFrame:
+    """Run a SELECT and return a DataFrame, backend-agnostically.
+
+    Avoids pandas' ``read_sql_query`` backend detection (which special-cases
+    sqlite3 / SQLAlchemy and doesn't recognise libSQL connections).
+    """
+    cur = conn.execute(sql, params)
+    cols = [d[0] for d in cur.description] if cur.description else []
+    rows = [tuple(r) for r in cur.fetchall()]
+    return pd.DataFrame(rows, columns=cols)
+
+
 def init_db() -> None:
+    # Execute statements one at a time: libSQL has no multi-statement
+    # ``executescript``, and single ``execute`` works on both backends.
+    statements = [s.strip() for s in SCHEMA.split(";") if s.strip()]
     with get_conn() as conn:
-        conn.executescript(SCHEMA)
+        for stmt in statements:
+            conn.execute(stmt)
 
 
 # ---------------------------------------------------------------------------
@@ -146,7 +195,7 @@ def delete_deal(deal_id: str) -> None:
 def get_deals() -> pd.DataFrame:
     """All deals as a DataFrame with typed expiry/trade_time columns."""
     with get_conn() as conn:
-        df = pd.read_sql_query("SELECT * FROM deals", conn)
+        df = _read_df(conn, "SELECT * FROM deals")
     if df.empty:
         return df
     df["expiry"] = pd.to_datetime(df["expiry"], errors="coerce")
@@ -171,10 +220,12 @@ def add_account_snapshot(ts: str, net_asset: float, cash: float, power: float) -
 
 def latest_account_snapshot() -> dict | None:
     with get_conn() as conn:
-        row = conn.execute(
+        cur = conn.execute(
             "SELECT * FROM account_snapshots ORDER BY ts DESC LIMIT 1"
-        ).fetchone()
-    return dict(row) if row else None
+        )
+        cols = [d[0] for d in cur.description] if cur.description else []
+        row = cur.fetchone()
+    return dict(zip(cols, tuple(row))) if row else None
 
 
 def replace_positions(positions: Iterable[dict]) -> None:
@@ -195,5 +246,4 @@ def replace_positions(positions: Iterable[dict]) -> None:
 
 def get_positions() -> pd.DataFrame:
     with get_conn() as conn:
-        df = pd.read_sql_query("SELECT * FROM positions_snapshot", conn)
-    return df
+        return _read_df(conn, "SELECT * FROM positions_snapshot")

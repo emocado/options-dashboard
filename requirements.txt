@@ -1,13 +1,12 @@
-# Options Wheel Dashboard dependencies
+# Options Wheel Dashboard — base dependencies.
+# This is what Streamlit Community Cloud installs, so keep it lean (no moomoo SDK).
 streamlit>=1.33
 pandas>=2.0
 plotly>=5.20
 
-# moomoo OpenAPI Python SDK (talks to the local moomoo OpenD gateway).
-# Required only for the "Sync from moomoo" feature; the dashboard runs fully
-# without it using manual entry. If install fails on your Python version,
-# the app still works in manual mode.
-moomoo-api>=10.4
+# Remote DB backend (Turso / libSQL), imported as `libsql`.
+# Used when TURSO_DATABASE_URL is set; otherwise the app falls back to local SQLite.
+libsql
 
 # Testing
 pytest>=8.0
