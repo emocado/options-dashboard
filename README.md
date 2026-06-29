@@ -75,9 +75,12 @@ also be edited from the Settings panel.
 | Tab | Contents |
 |-----|----------|
 | **📊 Overview** | KPI cards (premium collected, net realized P&L, unrealized P&L, win rate, premium this week/month/YTD, annualized ROC, capital secured, % deployed, account NAV/cash/power) + charts (cumulative realized P&L, monthly premium, P&L by ticker, open capital allocation). |
+| **📈 Performance** | Timeframe selector (14D/30D/60D/90D/6M/1Y/YTD/ALL) over closed trades: total P/L, win rate, avg win, avg loss, profit factor, expectancy, best/worst trade, win/loss counts + windowed equity curve and monthly yield-on-capital chart. |
+| **🧠 Strategy** | Performance by strategy type (cash-secured put vs covered call): trades, win %, avg premium, avg ROC, avg annualized ROC, realized P&L; completed-wheel count; and a table of detected rolls. |
 | **📌 Open Positions** | Open CSP/CC legs with strike, expiry, DTE, premium, capital secured, current value, unrealized P&L (from last sync), annualized ROC. |
 | **🧾 Trade History** | Closed legs with realized P&L, days held, ROC, annualized ROC, outcome (closed / expired / assigned). |
 | **🛞 Wheel Cycles** | Per-ticker rollup: option premium, stock P&L, fees, net P&L, share balance (≠ 0 means the wheel is still open). |
+| **📓 Journal** | Log a thesis on open legs; rate execution (Sloppy→Textbook) on a closed leg *before* its P&L is revealed; behavioral analytics correlating execution rating with realized P&L. |
 | **✍️ Manual** | Add trades by hand, tag assignments, delete deals, and inspect raw data. |
 
 ---
@@ -94,6 +97,12 @@ also be edited from the Settings panel.
 - **Net realized P&L** counts stock gains only on shares actually sold
   (called away); assigned shares you still hold sit in unrealized P&L, not as a loss.
 - **Win rate** = share of closed legs with positive realized P&L.
+- **Profit factor** = gross wins ÷ |gross losses| over the selected window (>1 is profitable).
+- **Expectancy** = average realized P&L per closed trade in the window.
+- **Monthly yield** = realized P&L ÷ capital deployed for legs closed that month;
+  the **annualized** projection multiplies it by 12.
+- **Roll** = a buy-to-close paired with a same-day reopen of the same underlying/type
+  at a later expiry; `net credit` = new credit − closing debit.
 
 ---
 

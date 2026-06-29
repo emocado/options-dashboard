@@ -85,6 +85,43 @@ def test_open_leg_not_realized():
     assert pd.isna(leg["realized_pnl"])
 
 
+def test_detect_rolls_pairs_close_with_later_reopen():
+    deals = pd.DataFrame([
+        # Buy-to-close the near-dated put for a small debit...
+        make_deal("c1", "US.AAPL250620P00150000", "option", "P", 150.0,
+                  "2025-06-20", "buy", 1, 0.50, premium=-50.0,
+                  trade_time="2025-06-10"),
+        # ...and reopen the same day further out for a credit -> a roll.
+        make_deal("o1", "US.AAPL250718P00150000", "option", "P", 150.0,
+                  "2025-07-18", "sell", 1, 2.00, premium=200.0,
+                  trade_time="2025-06-10"),
+    ])
+    rolls = wheel.detect_rolls(deals)
+    assert len(rolls) == 1
+    row = rolls.iloc[0]
+    assert row["underlying"] == "AAPL"
+    assert row["closed_expiry"] == pd.Timestamp("2025-06-20")
+    assert row["new_expiry"] == pd.Timestamp("2025-07-18")
+    assert row["net_credit"] == 150.0  # -50 debit + 200 credit
+
+
+def test_detect_rolls_ignores_distant_reopen():
+    deals = pd.DataFrame([
+        make_deal("c1", "US.AAPL250620P00150000", "option", "P", 150.0,
+                  "2025-06-20", "buy", 1, 0.50, premium=-50.0,
+                  trade_time="2025-06-10"),
+        # Reopen a week later -> outside the 1-day window, not a roll.
+        make_deal("o1", "US.AAPL250718P00150000", "option", "P", 150.0,
+                  "2025-07-18", "sell", 1, 2.00, premium=200.0,
+                  trade_time="2025-06-17"),
+    ])
+    assert wheel.detect_rolls(deals).empty
+
+
+def test_detect_rolls_empty():
+    assert wheel.detect_rolls(pd.DataFrame()).empty
+
+
 def test_cycle_rollup_full_wheel():
     deals = pd.DataFrame([
         # Sold put, collected 250

@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html data-theme="luxury" lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Premium Insights Feature Plan — Options Wheel Dashboard</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/daisyui.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/themes.css">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    :where(.grid, .flex) > * { min-width: 0; }
+    :where(p, h1, h2, h3, h4, h5, h6, li, td, th, .badge) { overflow-wrap: anywhere; }
+
+    .mermaid { background: transparent !important; }
+    .status-done { color: oklch(var(--color-success)); }
+    .status-new  { color: oklch(var(--color-warning)); }
+    .section-anchor { scroll-margin-top: 5rem; }
+
+    /* Stat children — prevent wide desc text from overflowing the fixed stat box */
+    .stat > * { max-width: 100%; overflow-wrap: break-word; white-space: normal; }
+
+    /* Diff containers */
+    .diff-wrap { border-radius: 0.5rem; overflow: hidden; border: 1px solid oklch(var(--color-base-300)); }
+  </style>
+</head>
+<body class="bg-base-100 text-base-content min-h-screen">
+
+<!-- ────────────────────────── NAV / STICKY TOC ────────────────────────── -->
+<div class="navbar bg-base-200 sticky top-0 z-50 shadow-sm px-6">
+  <div class="navbar-start">
+    <span class="text-lg font-bold tracking-tight">🛞 Wheel Dashboard</span>
+    <span class="badge badge-warning badge-soft ml-3">Plan — not yet implemented</span>
+  </div>
+  <div class="navbar-end hidden md:flex gap-1">
+    <a href="#scope"   class="btn btn-ghost btn-xs">Scope</a>
+    <a href="#arch"    class="btn btn-ghost btn-xs">Architecture</a>
+    <a href="#impl"    class="btn btn-ghost btn-xs">Implementation</a>
+    <a href="#verify"  class="btn btn-ghost btn-xs">Verification</a>
+  </div>
+</div>
+
+<!-- ────────────────────────── HERO HEADER ────────────────────────── -->
+<div class="hero bg-gradient-to-br from-base-200 to-base-300 py-12 px-6">
+  <div class="hero-content text-center max-w-3xl">
+    <div>
+      <div class="flex justify-center gap-2 mb-4 flex-wrap">
+        <span class="badge badge-primary">premiuminsights.ai parity</span>
+        <span class="badge badge-neutral">moomoo FUTUSG · single account</span>
+        <span class="badge badge-neutral">Streamlit + SQLite/Turso</span>
+      </div>
+      <h1 class="text-3xl font-bold mb-3">Add premiuminsights.ai Features</h1>
+      <p class="text-base-content/70 text-base leading-relaxed">
+        Bring four premium analytics capabilities to the wheel dashboard — performance timeframe
+        selector, strategy analytics, trade journal with behavioral tracking, and roll
+        detection + monthly yield % — while keeping the existing moomoo-only architecture intact.
+      </p>
+      <div class="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="stat bg-base-100 rounded-xl py-3 px-4 overflow-hidden">
+          <div class="stat-title text-xs">Files changed</div>
+          <div class="stat-value text-2xl text-primary">5</div>
+          <div class="stat-desc text-xs" style="overflow-wrap:break-word;white-space:normal">src/ + app.py + tests/</div>
+        </div>
+        <div class="stat bg-base-100 rounded-xl py-3 px-4 overflow-hidden">
+          <div class="stat-title text-xs">New tabs</div>
+          <div class="stat-value text-2xl text-success">+3</div>
+          <div class="stat-desc text-xs" style="overflow-wrap:break-word;white-space:normal">Perf · Strategy · Journal</div>
+        </div>
+        <div class="stat bg-base-100 rounded-xl py-3 px-4 overflow-hidden">
+          <div class="stat-title text-xs">New DB table</div>
+          <div class="stat-value text-2xl text-warning">1</div>
+          <div class="stat-desc text-xs" style="overflow-wrap:break-word;white-space:normal">journal (no migration)</div>
+        </div>
+        <div class="stat bg-base-100 rounded-xl py-3 px-4 overflow-hidden">
+          <div class="stat-title text-xs">Out of scope</div>
+          <div class="stat-value text-2xl text-error">0</div>
+          <div class="stat-desc text-xs" style="overflow-wrap:break-word;white-space:normal">multi-broker excluded</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="max-w-6xl mx-auto px-4 md:px-8 py-8 space-y-12">
+
+<!-- ────────────────────────── SCOPE ────────────────────────── -->
+<section id="scope" class="section-anchor">
+  <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+    <span class="badge badge-lg badge-warning">Scope</span>
+    What's being built
+  </h2>
+  <div class="grid md:grid-cols-2 gap-4">
+
+    <!-- IN SCOPE items -->
+    <div class="card card-border bg-base-200">
+      <div class="card-body">
+        <h3 class="card-title text-success text-base">✓ Confirmed in scope</h3>
+        <ul class="space-y-3 mt-2">
+          <li class="flex gap-3">
+            <span class="badge badge-success badge-soft shrink-0 mt-0.5">1</span>
+            <div>
+              <div class="font-semibold text-sm">Performance Tab + timeframe selector</div>
+              <div class="text-xs text-base-content/60 mt-0.5">14D / 30D / 60D / 90D / 6M / 1Y / YTD / ALL — win/loss analytics, profit factor, expectancy, equity curve filtered to window, monthly yield % bar chart.</div>
+            </div>
+          </li>
+          <li class="flex gap-3">
+            <span class="badge badge-success badge-soft shrink-0 mt-0.5">2</span>
+            <div>
+              <div class="font-semibold text-sm">Strategy Analytics</div>
+              <div class="text-xs text-base-content/60 mt-0.5">CSP vs Covered Call breakdown — n_trades, win rate, avg premium, avg ROC, avg annualized ROC, total realized P&L. Completed wheel count.</div>
+            </div>
+          </li>
+          <li class="flex gap-3">
+            <span class="badge badge-success badge-soft shrink-0 mt-0.5">3</span>
+            <div>
+              <div class="font-semibold text-sm">Trade Journal</div>
+              <div class="text-xs text-base-content/60 mt-0.5">Thesis at open · execution rating 1–5 at close (P&L hidden until rated) · behavioral analytics: avg P&L by rating + thesis-vs-outcome table.</div>
+            </div>
+          </li>
+          <li class="flex gap-3">
+            <span class="badge badge-success badge-soft shrink-0 mt-0.5">4</span>
+            <div>
+              <div class="font-semibold text-sm">Roll Detection + Monthly Yield %</div>
+              <div class="text-xs text-base-content/60 mt-0.5">Heuristic BTC→STO pairing within 1-day window, later expiry = roll. Monthly yield % = Σ realized P&L / Σ capital, annualized.</div>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- OUT OF SCOPE + existing coverage -->
+    <div class="space-y-4">
+      <div class="card card-border bg-base-200">
+        <div class="card-body py-4">
+          <h3 class="card-title text-error text-base">✗ Explicitly out of scope</h3>
+          <ul class="text-sm text-base-content/70 mt-2 space-y-1">
+            <li>· Multi-broker / multi-account aggregation</li>
+            <li>· Broker integrations beyond moomoo FUTUSG</li>
+            <li>· Social / sharing features</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card card-border bg-base-200">
+        <div class="card-body py-4">
+          <h3 class="card-title text-base-content/60 text-base">Already covered (no change)</h3>
+          <ul class="text-sm text-base-content/50 mt-2 space-y-1 columns-2">
+            <li>· Cumulative P&L chart</li>
+            <li>· Monthly P&L bar chart</li>
+            <li>· Win rate KPI</li>
+            <li>· ROC / annualized ROC</li>
+            <li>· Capital deployed</li>
+            <li>· Per-ticker breakdown</li>
+            <li>· Wheel cycles view</li>
+            <li>· Manual entry</li>
+            <li>· Currency toggle (USD ↔ SGD)</li>
+            <li>· moomoo sync</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ────────────────────────── ARCHITECTURE ────────────────────────── -->
+<section id="arch" class="section-anchor">
+  <h2 class="text-2xl font-bold mb-2 flex items-center gap-3">
+    <span class="badge badge-lg badge-primary">Architecture</span>
+    How the pieces fit
+  </h2>
+  <p class="text-sm text-base-content/60 mb-6">Gray = existing unchanged · Green = modified · Yellow = new</p>
+
+  <div class="card card-border bg-base-200 p-6">
+    <div class="mermaid">
+flowchart TD
+    MO["moomoo OpenD\n(unchanged)"]:::existing
+    DB["src/db.py\n+ journal table\n+ upsert_journal\n+ get_journal"]:::modified
+    WH["src/wheel.py\n+ detect_rolls()"]:::modified
+    ME["src/metrics.py\n+ period_start()\n+ performance_stats()\n+ by_strategy()\n+ monthly_yield()"]:::modified
+    APP["app.py\ntabs: 5 → 8\n+ tab_performance()\n+ tab_strategy()\n+ tab_journal()"]:::modified
+    T1["📈 Performance\ntimeframe selector\nequity curve\nyield chart"]:::newtab
+    T2["🧠 Strategy\nCSP vs CC\ncompleted wheels"]:::newtab
+    T3["📓 Journal\nthesis · rating\nbehavioral chart"]:::newtab
+    TR["tests/test_metrics.py (new)\ntests/test_wheel.py (extended)"]:::newtest
+
+    MO -->|sync fills| DB
+    DB -->|get_deals| WH
+    WH -->|legs DataFrame| ME
+    WH -->|detect_rolls| APP
+    ME -->|stats / strategy / yield| APP
+    DB -->|get_journal| APP
+    APP --> T1
+    APP --> T2
+    APP --> T3
+    ME -.->|test| TR
+    WH -.->|test| TR
+
+    classDef existing fill:#374151,stroke:#6b7280,color:#9ca3af
+    classDef modified fill:#1e3a5f,stroke:#3b82f6,color:#93c5fd
+    classDef newtab  fill:#14532d,stroke:#22c55e,color:#86efac
+    classDef newtest fill:#451a03,stroke:#f59e0b,color:#fcd34d
+    </div>
+  </div>
+
+  <div class="mt-4 flex flex-col md:flex-row gap-3 text-xs">
+    <div class="alert alert-info alert-soft flex-1 min-w-0">
+      <span><strong>Pure functions first.</strong> All new analytics live in <code>src/metrics.py</code> and <code>src/wheel.py</code> as stateless functions on DataFrames — trivially testable without a DB fixture.</span>
+    </div>
+    <div class="alert alert-success alert-soft flex-1 min-w-0">
+      <span><strong>Journal is additive.</strong> New <code>journal</code> table has no FK to <code>deals</code>. <code>init_db</code> already runs each <code>SCHEMA</code> statement independently — no migration script needed.</span>
+    </div>
+    <div class="alert alert-warning alert-soft flex-1 min-w-0">
+      <span><strong>Currency safety.</strong> New money KPIs pass through <code>money()</code> and <code>to_display_currency()</code>. Journal text fields are display-only strings — no conversion needed.</span>
+    </div>
+  </div>
+</section>
+
+<!-- ────────────────────────── IMPLEMENTATION ────────────────────────── -->
+<section id="impl" class="section-anchor">
+  <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+    <span class="badge badge-lg badge-secondary">Implementation</span>
+    File-by-file changes
+  </h2>
+
+  <!-- TAB NAVIGATOR for sections -->
+  <div class="tabs tabs-box mb-6" role="tablist">
+    <input type="radio" name="impl_tab" class="tab" aria-label="src/metrics.py" checked />
+    <input type="radio" name="impl_tab2" class="tab" aria-label="src/wheel.py" />
+    <input type="radio" name="impl_tab3" class="tab" aria-label="src/db.py" />
+    <input type="radio" name="impl_tab4" class="tab" aria-label="app.py" />
+    <input type="radio" name="impl_tab5" class="tab" aria-label="tests/" />
+  </div>
+
+  <!-- metrics.py -->
+  <div class="space-y-6">
+
+    <div class="card card-border bg-base-200">
+      <div class="card-body">
+        <div class="flex items-center gap-3 mb-1">
+          <code class="text-primary font-bold">src/metrics.py</code>
+          <span class="badge badge-info badge-soft">modified</span>
+          <span class="badge badge-neutral">4 new functions</span>
+        </div>
+        <p class="text-sm text-base-content/60 mb-4">Pure functions — all operate on the <code>legs</code> DataFrame returned by <code>wheel.build_option_legs()</code>. No DB access. Reuse existing column names.</p>
+
+        <div class="diff-wrap" id="metrics-diff"></div>
+
+        <div class="mt-4 overflow-x-auto">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Function</th>
+                <th>Signature</th>
+                <th>Returns</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>period_start</code></td>
+                <td class="text-xs"><code>(label: str, as_of=None) → Timestamp | None</code></td>
+                <td class="text-xs">cutoff timestamp or None (ALL)</td>
+                <td class="text-xs">Single source of truth for timeframe selector</td>
+              </tr>
+              <tr>
+                <td><code>performance_stats</code></td>
+                <td class="text-xs"><code>(legs, since=None) → dict</code></td>
+                <td class="text-xs">n_trades, win_rate, total_pnl, avg_win, avg_loss, profit_factor, expectancy, best_trade, worst_trade</td>
+                <td class="text-xs">NaN-safe; mirrors existing <code>kpis()</code> guards</td>
+              </tr>
+              <tr>
+                <td><code>by_strategy</code></td>
+                <td class="text-xs"><code>(legs) → DataFrame</code></td>
+                <td class="text-xs">strategy, n_trades, win_rate, avg_premium, avg_roc, avg_annualized_roc, total_realized_pnl</td>
+                <td class="text-xs">Groups by <code>role</code>; labels CSP/CC; mirrors <code>by_ticker()</code></td>
+              </tr>
+              <tr>
+                <td><code>monthly_yield</code></td>
+                <td class="text-xs"><code>(legs) → DataFrame</code></td>
+                <td class="text-xs">month, yield_pct, annualized_pct</td>
+                <td class="text-xs">Reuses month-bucketing idiom from <code>monthly_realized()</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- wheel.py -->
+    <div class="card card-border bg-base-200">
+      <div class="card-body">
+        <div class="flex items-center gap-3 mb-1">
+          <code class="text-primary font-bold">src/wheel.py</code>
+          <span class="badge badge-info badge-soft">modified</span>
+          <span class="badge badge-neutral">1 new function</span>
+        </div>
+        <p class="text-sm text-base-content/60 mb-4">Roll detection: heuristic pairing of BTC fills with same-underlying STO fills within a 1-day window where the new expiry is later.</p>
+
+        <div class="diff-wrap" id="wheel-diff"></div>
+
+        <div class="mt-4 overflow-x-auto">
+          <table class="table table-sm">
+            <thead>
+              <tr><th>Column</th><th>Type</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>underlying</code></td><td>str</td><td>Ticker (e.g. TSLA)</td></tr>
+              <tr><td><code>opt_type</code></td><td>str</td><td>P or C</td></tr>
+              <tr><td><code>closed_code</code></td><td>str</td><td>Option code that was bought to close</td></tr>
+              <tr><td><code>closed_expiry</code></td><td>date</td><td>Expiry of the closed position</td></tr>
+              <tr><td><code>new_code</code></td><td>str</td><td>New option opened (rolled into)</td></tr>
+              <tr><td><code>new_expiry</code></td><td>date</td><td>Later expiry of the new position</td></tr>
+              <tr><td><code>roll_time</code></td><td>datetime</td><td>Timestamp of the BTC fill</td></tr>
+              <tr><td><code>net_credit</code></td><td>float</td><td>New premium collected − close debit</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- db.py -->
+    <div class="card card-border bg-base-200">
+      <div class="card-body">
+        <div class="flex items-center gap-3 mb-1">
+          <code class="text-primary font-bold">src/db.py</code>
+          <span class="badge badge-info badge-soft">modified</span>
+          <span class="badge badge-neutral">1 new table · 3 new helpers</span>
+        </div>
+        <p class="text-sm text-base-content/60 mb-4">Additive: new <code>journal</code> table appended to <code>SCHEMA</code>. <code>init_db()</code> already executes each statement independently, so existing data is untouched.</p>
+
+        <div class="diff-wrap" id="db-diff"></div>
+
+        <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr))">
+          <div class="bg-base-100 rounded-lg p-3 min-w-0 overflow-hidden">
+            <div class="font-semibold text-xs text-base-content/50 uppercase tracking-wide mb-1">upsert_journal</div>
+            <code class="text-xs text-primary break-all">upsert_journal(code, **fields)</code>
+            <p class="text-xs text-base-content/60 mt-1">INSERT OR REPLACE. Sets <code>updated_at</code> automatically.</p>
+          </div>
+          <div class="bg-base-100 rounded-lg p-3 min-w-0 overflow-hidden">
+            <div class="font-semibold text-xs text-base-content/50 uppercase tracking-wide mb-1">get_journal</div>
+            <code class="text-xs text-primary break-all">get_journal() → DataFrame</code>
+            <p class="text-xs text-base-content/60 mt-1">All journal rows for merging with legs on <code>code</code>.</p>
+          </div>
+          <div class="bg-base-100 rounded-lg p-3 min-w-0 overflow-hidden">
+            <div class="font-semibold text-xs text-base-content/50 uppercase tracking-wide mb-1">get_journal_entry</div>
+            <code class="text-xs text-primary break-all">get_journal_entry(code) → dict | None</code>
+            <p class="text-xs text-base-content/60 mt-1">Single-row lookup for pre-populating the Journal UI forms.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- app.py -->
+    <div class="card card-border bg-base-200">
+      <div class="card-body">
+        <div class="flex items-center gap-3 mb-1">
+          <code class="text-primary font-bold">app.py</code>
+          <span class="badge badge-info badge-soft">modified</span>
+          <span class="badge badge-neutral">5 → 8 tabs</span>
+        </div>
+        <p class="text-sm text-base-content/60 mb-4">Tabs extended in <code>main()</code>. New tab functions reuse existing <code>money()</code>, <code>pct()</code>, <code>to_display_currency()</code> helpers.</p>
+
+        <div class="mt-2 mb-4">
+          <div class="flex flex-wrap gap-2 items-center">
+            <span class="text-xs text-base-content/50">Before:</span>
+            <span class="badge badge-neutral badge-soft text-xs">📊 Overview</span>
+            <span class="badge badge-neutral badge-soft text-xs">📌 Open Positions</span>
+            <span class="badge badge-neutral badge-soft text-xs">🧾 Trade History</span>
+            <span class="badge badge-neutral badge-soft text-xs">🛞 Wheel Cycles</span>
+            <span class="badge badge-neutral badge-soft text-xs">✍️ Manual</span>
+          </div>
+          <div class="flex flex-wrap gap-2 items-center mt-2">
+            <span class="text-xs text-base-content/50">After: </span>
+            <span class="badge badge-neutral badge-soft text-xs">📊 Overview</span>
+            <span class="badge badge-success badge-soft text-xs">📈 Performance ✨</span>
+            <span class="badge badge-success badge-soft text-xs">🧠 Strategy ✨</span>
+            <span class="badge badge-neutral badge-soft text-xs">📌 Open Positions</span>
+            <span class="badge badge-neutral badge-soft text-xs">🧾 Trade History</span>
+            <span class="badge badge-neutral badge-soft text-xs">🛞 Wheel Cycles</span>
+            <span class="badge badge-success badge-soft text-xs">📓 Journal ✨</span>
+            <span class="badge badge-neutral badge-soft text-xs">✍️ Manual</span>
+          </div>
+        </div>
+
+        <!-- New tab breakdown cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))">
+          <div class="bg-base-100 rounded-xl p-4 border border-success/30 min-w-0 overflow-hidden">
+            <div class="text-success font-bold text-sm mb-2">📈 tab_performance(legs)</div>
+            <ul class="text-xs text-base-content/60 space-y-1">
+              <li>→ Segmented control: 14D 30D 60D 90D 6M 1Y YTD ALL</li>
+              <li>→ KPI grid: total P&L, win rate, avg win/loss, profit factor, expectancy, best/worst, # trades</li>
+              <li>→ Equity curve filtered to the selected window</li>
+              <li>→ Monthly yield % bar chart (green/red)</li>
+              <li>→ Empty-state: <code class="break-all">st.info</code> when no closed trades in window</li>
+            </ul>
+          </div>
+          <div class="bg-base-100 rounded-xl p-4 border border-success/30 min-w-0 overflow-hidden">
+            <div class="text-success font-bold text-sm mb-2">🧠 tab_strategy(legs)</div>
+            <ul class="text-xs text-base-content/60 space-y-1">
+              <li>→ <code class="break-all">by_strategy</code> table: strategy / n_trades / win rate / avg premium / avg ROC / total P&L</li>
+              <li>→ Grouped Plotly bars: P&L and win rate by CSP vs CC</li>
+              <li>→ "Completed wheels" from <code class="break-all">wheel.build_cycles()</code></li>
+              <li>→ Empty-state: <code class="break-all">st.info</code> when no closed legs</li>
+            </ul>
+          </div>
+          <div class="bg-base-100 rounded-xl p-4 border border-success/30 min-w-0 overflow-hidden">
+            <div class="text-success font-bold text-sm mb-2">📓 tab_journal(legs)</div>
+            <ul class="text-xs text-base-content/60 space-y-1">
+              <li>→ <strong>§1 Log thesis:</strong> selectbox of open leg codes → text_area → save</li>
+              <li>→ <strong>§2 Rate before reveal:</strong> closed legs without rating; contract shown, P&L hidden; radio 1–5 → save → reveal P&L</li>
+              <li>→ <strong>§3 Behavioral analytics:</strong> avg P&L by rating bar chart + thesis vs. outcome table</li>
+              <li>→ Ratings: 1 Sloppy · 2 Rushed · 3 Okay · 4 Solid · 5 Textbook</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="diff-wrap mt-6" id="app-diff"></div>
+      </div>
+    </div>
+
+    <!-- tests/ -->
+    <div class="card card-border bg-base-200">
+      <div class="card-body">
+        <div class="flex items-center gap-3 mb-1">
+          <code class="text-primary font-bold">tests/</code>
+          <span class="badge badge-warning badge-soft">new file</span>
+          <span class="badge badge-info badge-soft">modified</span>
+        </div>
+        <p class="text-sm text-base-content/60 mb-4">Pure-function style — no DB fixture needed. Follows the pattern in <code>test_wheel.py</code> and <code>test_options.py</code>.</p>
+
+        <div class="grid md:grid-cols-2 gap-4">
+          <div class="bg-base-100 rounded-xl p-4 border border-warning/30">
+            <div class="text-warning font-bold text-sm mb-2">tests/test_metrics.py (new)</div>
+            <ul class="text-xs text-base-content/60 space-y-1">
+              <li>· <code>test_period_start_boundaries</code> — verify 14D, YTD, ALL cutoffs</li>
+              <li>· <code>test_performance_stats_win_loss</code> — hand-built legs DataFrame; assert win rate, profit factor, expectancy</li>
+              <li>· <code>test_performance_stats_empty</code> — no trades → NaN-safe dict (no KeyError)</li>
+              <li>· <code>test_by_strategy_labels</code> — CSP/CC labels correct, aggregates sensible</li>
+              <li>· <code>test_monthly_yield</code> — yield_pct = Σpnl / Σcapital by month</li>
+            </ul>
+          </div>
+          <div class="bg-base-100 rounded-xl p-4 border border-info/30">
+            <div class="text-info font-bold text-sm mb-2">tests/test_wheel.py (extended)</div>
+            <ul class="text-xs text-base-content/60 space-y-1">
+              <li>· <code>test_detect_rolls_positive</code> — BTC fill + STO fill within 1 day, later expiry → 1 roll detected, net_credit correct</li>
+              <li>· <code>test_detect_rolls_negative</code> — BTC fill + STO fill with earlier expiry → 0 rolls</li>
+              <li>· Uses existing <code>make_deal()</code> helper from the file</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ────────────────────────── VERIFICATION ────────────────────────── -->
+<section id="verify" class="section-anchor">
+  <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+    <span class="badge badge-lg badge-accent">Verification</span>
+    How to confirm it works
+  </h2>
+
+  <div class="grid md:grid-cols-2 gap-6">
+    <div>
+      <h3 class="font-semibold mb-3 text-base-content/70">Unit Tests</h3>
+      <div class="bg-base-200 rounded-xl p-4 font-mono text-sm">
+        <div class="text-success">$ python -m pytest -q</div>
+        <div class="text-base-content/50 text-xs mt-2">All existing + new tests must pass.<br>No DB fixture required for new tests.</div>
+      </div>
+    </div>
+    <div>
+      <h3 class="font-semibold mb-3 text-base-content/70">Run the App</h3>
+      <div class="bg-base-200 rounded-xl p-4 font-mono text-sm">
+        <div class="text-success">$ python -m streamlit run app.py</div>
+        <div class="text-base-content/50 text-xs mt-2">Log in → check each new tab below.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-6 space-y-3">
+
+    <div class="collapse collapse-arrow bg-base-200 border border-base-300">
+      <input type="checkbox" checked />
+      <div class="collapse-title font-semibold text-sm flex items-center gap-2">
+        <span class="badge badge-success badge-soft">📈 Performance</span> Tab verification
+      </div>
+      <div class="collapse-content text-sm">
+        <ul class="space-y-1 text-base-content/70">
+          <li class="flex gap-2"><span class="text-success">□</span> Switch timeframes 14D → ALL — trade count and total P&L update each time</li>
+          <li class="flex gap-2"><span class="text-success">□</span> avg_win, avg_loss, profit_factor, expectancy all populate (no "—" when trades exist)</li>
+          <li class="flex gap-2"><span class="text-success">□</span> Equity curve trims to the selected window start date</li>
+          <li class="flex gap-2"><span class="text-success">□</span> Monthly yield % chart shows green/red bars (matching existing monthly-realized style)</li>
+          <li class="flex gap-2"><span class="text-success">□</span> With no closed trades in window → <code>st.info</code> message, no exception</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="collapse collapse-arrow bg-base-200 border border-base-300">
+      <input type="checkbox" />
+      <div class="collapse-title font-semibold text-sm flex items-center gap-2">
+        <span class="badge badge-warning badge-soft">🧠 Strategy</span> Tab verification
+      </div>
+      <div class="collapse-content text-sm">
+        <ul class="space-y-1 text-base-content/70">
+          <li class="flex gap-2"><span class="text-success">□</span> CSP and Covered Call rows each show sensible win rate / avg premium / total P&L</li>
+          <li class="flex gap-2"><span class="text-success">□</span> Completed wheels count matches the Wheel Cycles tab count</li>
+          <li class="flex gap-2"><span class="text-success">□</span> Grouped Plotly bars render without overlap or truncation</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="collapse collapse-arrow bg-base-200 border border-base-300">
+      <input type="checkbox" />
+      <div class="collapse-title font-semibold text-sm flex items-center gap-2">
+        <span class="badge badge-info badge-soft">📓 Journal</span> Tab verification
+      </div>
+      <div class="collapse-content text-sm">
+        <ul class="space-y-1 text-base-content/70">
+          <li class="flex gap-2"><span class="text-success">□</span> Write a thesis on an open leg — saved and reloaded correctly</li>
+          <li class="flex gap-2"><span class="text-success">□</span> On a closed leg without a rating: P&L is hidden; rating radio visible</li>
+          <li class="flex gap-2"><span class="text-success">□</span> Submit rating → P&L revealed; leg disappears from unrated selectbox</li>
+          <li class="flex gap-2"><span class="text-success">□</span> Behavioral chart appears once ≥1 rating exists</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="collapse collapse-arrow bg-base-200 border border-base-300">
+      <input type="checkbox" />
+      <div class="collapse-title font-semibold text-sm flex items-center gap-2">
+        <span class="badge badge-secondary badge-soft">💱 Currency</span> Toggle + regression
+      </div>
+      <div class="collapse-content text-sm">
+        <ul class="space-y-1 text-base-content/70">
+          <li class="flex gap-2"><span class="text-success">□</span> Flip USD ↔ SGD — all new money KPIs in Performance tab convert correctly</li>
+          <li class="flex gap-2"><span class="text-success">□</span> Strategy table P&L column converts; journal text fields stay unchanged</li>
+          <li class="flex gap-2"><span class="text-success">□</span> Existing Overview / Open Positions / Trade History / Wheel Cycles / Manual tabs unaffected</li>
+          <li class="flex gap-2"><span class="text-success">□</span> moomoo sync path untouched — sync still works after the changes</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="collapse collapse-arrow bg-base-200 border border-base-300">
+      <input type="checkbox" />
+      <div class="collapse-title font-semibold text-sm flex items-center gap-2">
+        <span class="badge badge-neutral badge-soft">🗄️ Empty DB</span> Fresh database
+      </div>
+      <div class="collapse-content text-sm">
+        <ul class="space-y-1 text-base-content/70">
+          <li class="flex gap-2"><span class="text-success">□</span> Delete <code>data/dashboard.db</code> and restart — <code>init_db()</code> creates all 3 tables (deals, wheels, journal)</li>
+          <li class="flex gap-2"><span class="text-success">□</span> Every new tab shows its <code>st.info</code> empty-state message without raising an exception</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ────────────────────────── RISKS ────────────────────────── -->
+<section class="section-anchor pb-16">
+  <h2 class="text-2xl font-bold mb-4 flex items-center gap-3">
+    <span class="badge badge-lg badge-error">Risks</span>
+    Things to watch
+  </h2>
+  <div class="grid md:grid-cols-2 gap-4">
+    <div class="alert alert-warning alert-soft">
+      <div>
+        <div class="font-semibold text-sm">Roll detection heuristic sensitivity</div>
+        <p class="text-xs mt-1">The 1-day window may produce false positives if two unrelated trades happen to be a BTC + STO on the same underlying on the same day. The <code>window_days</code> parameter lets you tune this without changing the call sites.</p>
+      </div>
+    </div>
+    <div class="alert alert-warning alert-soft">
+      <div>
+        <div class="font-semibold text-sm">Journal P&L reveal UX (session state)</div>
+        <p class="text-xs mt-1">The "hide P&L until rated" behavior relies on Streamlit session state. A page refresh clears the hidden state. The rating is persisted in DB, but if the user refreshes mid-review the P&L may become visible before rating is saved — acceptable for a single-user personal tool.</p>
+      </div>
+    </div>
+    <div class="alert alert-info alert-soft">
+      <div>
+        <div class="font-semibold text-sm">profit_factor when no losses</div>
+        <p class="text-xs mt-1"><code>Σwins / |Σlosses|</code> is undefined when there are 0 losing trades. Return <code>float('inf')</code> or a sentinel, and render as "∞" or "–" in the UI so the metric card doesn't display <code>nan</code>.</p>
+      </div>
+    </div>
+    <div class="alert alert-info alert-soft">
+      <div>
+        <div class="font-semibold text-sm">Turso cloud sync of journal rows</div>
+        <p class="text-xs mt-1">The local-to-cloud sync tool (<code>tools/sync_to_cloud.py</code>) currently syncs <code>deals</code> and <code>wheels</code>. If you use Turso in cloud mode, extend the sync to include the <code>journal</code> table — otherwise journal entries won't survive a local DB wipe.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div><!-- /max-w -->
+
+<!-- Mermaid init -->
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11.15.0/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({ startOnLoad: true, theme: "dark", securityLevel: "strict" });
+</script>
+
+<!-- @pierre/diffs code snippets -->
+<script type="module">
+import { File, FileDiff } from "https://esm.sh/@pierre/diffs@1.2.10?bundle";
+
+const theme = { light: "github-dark", dark: "github-dark" };
+const opts  = { theme, themeType: "dark", overflow: "wrap" };
+
+// ── metrics.py additions ──────────────────────────────────────────────────
+const metricsNew = {
+  name: "src/metrics.py (additions)",
+  contents: `import pandas as pd
+from datetime import date
+
+# ── Timeframe selector helper ─────────────────────────────────────────────
+
+def period_start(label: str, as_of=None) -> "pd.Timestamp | None":
+    """Map a timeframe label to a start timestamp (or None for ALL).
+
+    Args:
+        label: one of 14D, 30D, 60D, 90D, 6M, 1Y, YTD, ALL
+        as_of: reference date (defaults to today)
+    """
+    ref = pd.Timestamp(as_of or date.today())
+    mapping = {
+        "14D": ref - pd.Timedelta(days=14),
+        "30D": ref - pd.Timedelta(days=30),
+        "60D": ref - pd.Timedelta(days=60),
+        "90D": ref - pd.Timedelta(days=90),
+        "6M":  ref - pd.DateOffset(months=6),
+        "1Y":  ref - pd.DateOffset(months=12),
+        "YTD": pd.Timestamp(ref.year, 1, 1),
+        "ALL": None,
+    }
+    return mapping[label]
+
+
+# ── Performance stats ─────────────────────────────────────────────────────
+
+CLOSED_STATUSES = {"closed", "expired", "assigned"}
+
+def performance_stats(legs: pd.DataFrame, since=None) -> dict:
+    """Aggregate performance metrics for closed legs within a time window."""
+    closed = legs[legs["status"].isin(CLOSED_STATUSES)].copy()
+    if since is not None:
+        closed = closed[closed["close_time"] >= since]
+    if closed.empty:
+        return dict(n_trades=0, n_wins=0, n_losses=0, win_rate=float("nan"),
+                    total_pnl=float("nan"), total_premium=float("nan"),
+                    avg_win=float("nan"), avg_loss=float("nan"),
+                    profit_factor=float("nan"), expectancy=float("nan"),
+                    best_trade=float("nan"), worst_trade=float("nan"))
+    wins   = closed[closed["realized_pnl"] > 0]["realized_pnl"]
+    losses = closed[closed["realized_pnl"] <= 0]["realized_pnl"]
+    pf     = (wins.sum() / abs(losses.sum())) if len(losses) > 0 else float("inf")
+    n      = len(closed)
+    return dict(
+        n_trades      = n,
+        n_wins        = len(wins),
+        n_losses      = len(losses),
+        win_rate      = len(wins) / n,
+        total_pnl     = closed["realized_pnl"].sum(),
+        total_premium = closed["premium_collected"].sum(),
+        avg_win       = wins.mean()   if len(wins)   else float("nan"),
+        avg_loss      = losses.mean() if len(losses) else float("nan"),
+        profit_factor = pf,
+        expectancy    = closed["realized_pnl"].mean(),
+        best_trade    = closed["realized_pnl"].max(),
+        worst_trade   = closed["realized_pnl"].min(),
+    )
+
+
+# ── Strategy breakdown ────────────────────────────────────────────────────
+
+ROLE_LABELS = {"CSP": "Cash-Secured Put", "CC": "Covered Call"}
+
+def by_strategy(legs: pd.DataFrame) -> pd.DataFrame:
+    """Group closed legs by strategy type (mirrors by_ticker)."""
+    closed = legs[legs["status"].isin(CLOSED_STATUSES)].copy()
+    if closed.empty:
+        return pd.DataFrame(columns=["strategy","n_trades","win_rate",
+                                     "avg_premium","avg_roc","avg_annualized_roc",
+                                     "total_realized_pnl"])
+    closed["strategy"] = closed["role"].map(ROLE_LABELS).fillna(closed["role"])
+    grp = closed.groupby("strategy", sort=False)
+    return pd.DataFrame({
+        "strategy":          grp.ngroups * [None],  # filled below
+        "n_trades":          grp["realized_pnl"].count(),
+        "win_rate":          grp["won"].mean(),
+        "avg_premium":       grp["premium_collected"].mean(),
+        "avg_roc":           grp["roc"].mean(),
+        "avg_annualized_roc":grp["annualized_roc"].mean(),
+        "total_realized_pnl":grp["realized_pnl"].sum(),
+    }).reset_index()
+
+
+# ── Monthly yield ─────────────────────────────────────────────────────────
+
+def monthly_yield(legs: pd.DataFrame) -> pd.DataFrame:
+    """Monthly yield %: Σ realized_pnl / Σ capital per close-month."""
+    closed = legs[legs["status"].isin(CLOSED_STATUSES)].copy()
+    if closed.empty:
+        return pd.DataFrame(columns=["month", "yield_pct", "annualized_pct"])
+    closed["month"] = closed["close_time"].dt.to_period("M")
+    grp = closed.groupby("month")
+    result = pd.DataFrame({
+        "yield_pct": grp["realized_pnl"].sum() / grp["capital"].sum(),
+    }).reset_index()
+    result["annualized_pct"] = result["yield_pct"] * 12
+    return result
+`,
+};
+
+// ── wheel.py detect_rolls ─────────────────────────────────────────────────
+const wheelNew = {
+  name: "src/wheel.py (detect_rolls addition)",
+  contents: `def detect_rolls(
+    deals: pd.DataFrame,
+    window_days: int = 1,
+) -> pd.DataFrame:
+    """Detect roll transactions: BTC paired with a STO on same underlying
+    within *window_days*, where the new expiry is later than the closed one.
+
+    Returns a DataFrame with one row per detected roll.
+    """
+    btc = deals[deals["side"].isin([BUY_TO_CLOSE])].copy()
+    sto = deals[deals["side"].isin([SELL_PUT, SELL_CALL])].copy()
+
+    rolls = []
+    for _, b in btc.iterrows():
+        window_start = b["trade_time"]
+        window_end   = b["trade_time"] + pd.Timedelta(days=window_days)
+        candidates = sto[
+            (sto["underlying"] == b["underlying"])
+            & (sto["opt_type"]  == b["opt_type"])
+            & (sto["trade_time"] >= window_start)
+            & (sto["trade_time"] <= window_end)
+            & (sto["expiry"]    >  b["expiry"])
+        ]
+        for _, s in candidates.iterrows():
+            rolls.append({
+                "underlying":    b["underlying"],
+                "opt_type":      b["opt_type"],
+                "closed_code":   b["code"],
+                "closed_expiry": b["expiry"],
+                "new_code":      s["code"],
+                "new_expiry":    s["expiry"],
+                "roll_time":     b["trade_time"],
+                "net_credit":    s["premium"] - b["premium"],
+            })
+    return pd.DataFrame(rolls) if rolls else pd.DataFrame(
+        columns=["underlying","opt_type","closed_code","closed_expiry",
+                 "new_code","new_expiry","roll_time","net_credit"]
+    )
+`,
+};
+
+// ── db.py journal table ───────────────────────────────────────────────────
+const dbOld = {
+  name: "src/db.py",
+  contents: `SCHEMA = """
+CREATE TABLE IF NOT EXISTS deals (
+    code             TEXT,
+    trade_time       TEXT,
+    ...
+);
+CREATE TABLE IF NOT EXISTS wheels (
+    id               INTEGER PRIMARY KEY,
+    ...
+);
+"""
+`,
+};
+const dbNew = {
+  name: "src/db.py",
+  contents: `SCHEMA = """
+CREATE TABLE IF NOT EXISTS deals (
+    code             TEXT,
+    trade_time       TEXT,
+    ...
+);
+CREATE TABLE IF NOT EXISTS wheels (
+    id               INTEGER PRIMARY KEY,
+    ...
+);
+CREATE TABLE IF NOT EXISTS journal (
+    code             TEXT PRIMARY KEY,   -- option contract code
+    thesis           TEXT,               -- reasoning captured at open
+    execution_rating INTEGER,            -- 1..5 (Sloppy..Textbook)
+    review_note      TEXT,
+    created_at       TEXT,
+    updated_at       TEXT
+);
+"""
+
+
+def upsert_journal(code: str, **fields) -> None:
+    """Insert or replace a journal entry for the given option code."""
+    fields["updated_at"] = datetime.utcnow().isoformat()
+    fields["code"] = code
+    cols = ", ".join(fields.keys())
+    placeholders = ", ".join(f":{k}" for k in fields.keys())
+    with _conn() as con:
+        con.execute(
+            f"INSERT OR REPLACE INTO journal ({cols}) VALUES ({placeholders})",
+            fields,
+        )
+
+
+def get_journal() -> pd.DataFrame:
+    return _read_df("SELECT * FROM journal")
+
+
+def get_journal_entry(code: str) -> dict | None:
+    rows = _read_df("SELECT * FROM journal WHERE code = ?", (code,))
+    return rows.iloc[0].to_dict() if not rows.empty else None
+`,
+};
+
+// ── app.py tab list ───────────────────────────────────────────────────────
+const appOld = {
+  name: "app.py",
+  contents: `def main():
+    ...
+    tab_ov, tab_pos, tab_hist, tab_whl, tab_man = st.tabs([
+        "📊 Overview",
+        "📌 Open Positions",
+        "🧾 Trade History",
+        "🛞 Wheel Cycles",
+        "✍️ Manual",
+    ])
+    with tab_ov:   render_overview(legs, deals, rolls)
+    with tab_pos:  render_positions(legs)
+    with tab_hist: render_history(legs)
+    with tab_whl:  render_cycles(deals)
+    with tab_man:  render_manual()
+`,
+};
+const appNew = {
+  name: "app.py",
+  contents: `def main():
+    ...
+    (tab_ov, tab_perf, tab_strat,
+     tab_pos, tab_hist, tab_whl,
+     tab_jrn, tab_man) = st.tabs([
+        "📊 Overview",
+        "📈 Performance",   # NEW
+        "🧠 Strategy",      # NEW
+        "📌 Open Positions",
+        "🧾 Trade History",
+        "🛞 Wheel Cycles",
+        "📓 Journal",       # NEW
+        "✍️ Manual",
+    ])
+    with tab_ov:   render_overview(legs, deals, rolls)
+    with tab_perf: tab_performance(legs)    # NEW
+    with tab_strat: tab_strategy(legs)      # NEW
+    with tab_pos:  render_positions(legs)
+    with tab_hist: render_history(legs)
+    with tab_whl:  render_cycles(deals)
+    with tab_jrn:  tab_journal(legs)        # NEW
+    with tab_man:  render_manual()
+`,
+};
+
+// Render all diffs
+new File(opts).render({ containerWrapper: document.querySelector("#metrics-diff"), file: metricsNew });
+new File(opts).render({ containerWrapper: document.querySelector("#wheel-diff"),   file: wheelNew });
+new FileDiff({ ...opts, diffStyle: "split" }).render({ containerWrapper: document.querySelector("#db-diff"), oldFile: dbOld, newFile: dbNew });
+new FileDiff({ ...opts, diffStyle: "split" }).render({ containerWrapper: document.querySelector("#app-diff"), oldFile: appOld, newFile: appNew });
+</script>
+
+</body>
+</html>

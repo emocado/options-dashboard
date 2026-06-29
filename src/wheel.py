@@ -205,6 +205,59 @@ def suggest_assignments(deals: pd.DataFrame, tol: float = 0.01) -> pd.DataFrame:
     return pd.DataFrame(out, columns=cols)
 
 
+def detect_rolls(deals: pd.DataFrame, window_days: int = 1) -> pd.DataFrame:
+    """Heuristic roll detection: a buy-to-close paired with a same-day reopen further out.
+
+    Within each ``(underlying, opt_type)`` group, each buy-to-close fill is matched
+    to a sell-to-open fill whose ``trade_time`` is within ``window_days`` and whose
+    ``expiry`` is later (rolling the position out in time). ``net_credit`` is the new
+    credit minus the closing debit, so positive means you rolled for a net credit.
+    """
+    cols = ["underlying", "opt_type", "closed_code", "closed_expiry", "new_code",
+            "new_expiry", "roll_time", "net_credit"]
+    if deals.empty:
+        return pd.DataFrame(columns=cols)
+
+    options = deals[deals["sec_type"] == "option"].copy()
+    if options.empty:
+        return pd.DataFrame(columns=cols)
+
+    window = pd.Timedelta(days=window_days)
+    rows = []
+    for (underlying, opt_type), grp in options.groupby(["underlying", "opt_type"]):
+        closes = grp[grp["side"] == "buy"]
+        opens = grp[grp["side"] == "sell"]
+        if closes.empty or opens.empty:
+            continue
+        used_open_ids = set()
+        for _, close in closes.iterrows():
+            close_exp = close["expiry"]
+            cand = opens[
+                (opens["trade_time"] - close["trade_time"]).abs() <= window
+            ]
+            if pd.notna(close_exp):
+                cand = cand[cand["expiry"] > close_exp]
+            cand = cand[~cand["deal_id"].isin(used_open_ids)]
+            if cand.empty:
+                continue
+            # Pair with the nearest reopen in time.
+            new = cand.iloc[
+                (cand["trade_time"] - close["trade_time"]).abs().argmin()]
+            used_open_ids.add(new["deal_id"])
+            rows.append({
+                "underlying": underlying,
+                "opt_type": opt_type,
+                "closed_code": close["code"],
+                "closed_expiry": close_exp,
+                "new_code": new["code"],
+                "new_expiry": new["expiry"],
+                "roll_time": new["trade_time"],
+                "net_credit": float(close["premium"]) + float(new["premium"]),
+            })
+    return pd.DataFrame(rows, columns=cols).sort_values(
+        "roll_time").reset_index(drop=True) if rows else pd.DataFrame(columns=cols)
+
+
 def build_cycles(deals: pd.DataFrame, as_of: date | None = None) -> pd.DataFrame:
     """Per-underlying wheel summary across all legs and stock trades.
 

@@ -73,12 +73,25 @@ CREATE TABLE IF NOT EXISTS settings (
     key   TEXT PRIMARY KEY,
     value TEXT
 );
+
+CREATE TABLE IF NOT EXISTS journal (
+    code             TEXT PRIMARY KEY,  -- option contract code (one entry per leg)
+    thesis           TEXT,              -- reasoning captured at open
+    execution_rating INTEGER,           -- 1..5 (Sloppy..Textbook), set at close
+    review_note      TEXT,
+    created_at       TEXT,
+    updated_at       TEXT
+);
 """
 
 DEAL_COLUMNS = [
     "deal_id", "order_id", "code", "underlying", "sec_type", "opt_type",
     "strike", "expiry", "side", "qty", "price", "premium", "fee",
     "trade_time", "source", "wheel_event", "cycle_id", "status", "notes",
+]
+
+JOURNAL_COLUMNS = [
+    "code", "thesis", "execution_rating", "review_note", "created_at", "updated_at",
 ]
 
 
@@ -247,3 +260,43 @@ def replace_positions(positions: Iterable[dict]) -> None:
 def get_positions() -> pd.DataFrame:
     with get_conn() as conn:
         return _read_df(conn, "SELECT * FROM positions_snapshot")
+
+
+# ---------------------------------------------------------------------------
+# Trade journal (thesis at open, execution rating at close)
+# ---------------------------------------------------------------------------
+
+def upsert_journal(code: str, **fields) -> None:
+    """Create or patch the journal entry for one option leg, keyed on ``code``.
+
+    Merges into any existing row (so logging a thesis, then later a rating, both
+    persist) and always refreshes ``updated_at``.
+    """
+    from datetime import datetime
+
+    existing = get_journal_entry(code) or {}
+    merged = {**existing, **{k: v for k, v in fields.items() if k in JOURNAL_COLUMNS}}
+    merged["code"] = code
+    merged.setdefault("created_at", existing.get("created_at")
+                      or datetime.now().isoformat(timespec="seconds"))
+    merged["updated_at"] = datetime.now().isoformat(timespec="seconds")
+    row = tuple(merged.get(col) for col in JOURNAL_COLUMNS)
+    placeholders = ", ".join("?" for _ in JOURNAL_COLUMNS)
+    cols = ", ".join(JOURNAL_COLUMNS)
+    with get_conn() as conn:
+        conn.execute(
+            f"INSERT OR REPLACE INTO journal ({cols}) VALUES ({placeholders})", row
+        )
+
+
+def get_journal() -> pd.DataFrame:
+    with get_conn() as conn:
+        return _read_df(conn, "SELECT * FROM journal")
+
+
+def get_journal_entry(code: str) -> dict | None:
+    with get_conn() as conn:
+        cur = conn.execute("SELECT * FROM journal WHERE code = ?", (code,))
+        cols = [d[0] for d in cur.description] if cur.description else []
+        row = cur.fetchone()
+    return dict(zip(cols, tuple(row))) if row else None

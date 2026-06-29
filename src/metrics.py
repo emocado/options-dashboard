@@ -90,6 +90,134 @@ def kpis(deals: pd.DataFrame, legs: pd.DataFrame,
     }
 
 
+# ---------------------------------------------------------------------------
+# Performance analytics (timeframe-filtered win/loss stats)
+# ---------------------------------------------------------------------------
+
+# Selector labels for the Performance tab, in display order.
+PERIOD_LABELS = ["14D", "30D", "60D", "90D", "6M", "1Y", "YTD", "ALL"]
+
+
+def period_start(label: str, as_of: date | None = None) -> pd.Timestamp | None:
+    """Map a Performance-tab period label to its inclusive start timestamp.
+
+    Returns ``None`` for ``"ALL"`` (no lower bound). Single source of truth so
+    the selector and the stats stay in sync.
+    """
+    today = pd.Timestamp(as_of or date.today()).normalize()
+    days = {"14D": 14, "30D": 30, "60D": 60, "90D": 90}
+    if label in days:
+        return today - pd.Timedelta(days=days[label])
+    if label == "6M":
+        return today - pd.DateOffset(months=6)
+    if label == "1Y":
+        return today - pd.DateOffset(months=12)
+    if label == "YTD":
+        return today.replace(month=1, day=1)
+    return None  # "ALL"
+
+
+def _closed_legs(legs: pd.DataFrame) -> pd.DataFrame:
+    """Closed/expired/assigned legs with a usable close time."""
+    if legs.empty:
+        return legs
+    closed = legs[legs["status"].isin(["closed", "expired", "assigned"])].copy()
+    return closed.dropna(subset=["close_time"])
+
+
+def performance_stats(legs: pd.DataFrame, since: pd.Timestamp | None = None) -> dict:
+    """Win/loss headline stats over closed legs within a window.
+
+    ``since`` filters on ``close_time`` (``None`` => all history). NaN-safe when
+    there are no qualifying trades.
+    """
+    empty = {
+        "n_trades": 0, "n_wins": 0, "n_losses": 0, "win_rate": float("nan"),
+        "total_pnl": 0.0, "total_premium": 0.0, "avg_win": float("nan"),
+        "avg_loss": float("nan"), "profit_factor": float("nan"),
+        "expectancy": float("nan"), "best_trade": float("nan"),
+        "worst_trade": float("nan"),
+    }
+    closed = _closed_legs(legs)
+    if closed.empty:
+        return empty
+    if since is not None:
+        closed = closed[closed["close_time"] >= since]
+    closed = closed.dropna(subset=["realized_pnl"])
+    if closed.empty:
+        return empty
+
+    pnl = closed["realized_pnl"]
+    wins = pnl[pnl > 0]
+    losses = pnl[pnl <= 0]
+    n = int(len(pnl))
+    gross_loss = float(losses.sum())
+    return {
+        "n_trades": n,
+        "n_wins": int(len(wins)),
+        "n_losses": int(len(losses)),
+        "win_rate": float(len(wins) / n) if n else float("nan"),
+        "total_pnl": float(pnl.sum()),
+        "total_premium": float(closed["premium_collected"].sum()),
+        "avg_win": float(wins.mean()) if not wins.empty else float("nan"),
+        "avg_loss": float(losses.mean()) if not losses.empty else float("nan"),
+        "profit_factor": (float(wins.sum() / abs(gross_loss))
+                          if gross_loss < 0 else float("nan")),
+        "expectancy": float(pnl.mean()),
+        "best_trade": float(pnl.max()),
+        "worst_trade": float(pnl.min()),
+    }
+
+
+# Friendly labels for the option role recorded on each leg.
+STRATEGY_LABELS = {"CSP": "Cash-Secured Put", "CC": "Covered Call"}
+
+
+def by_strategy(legs: pd.DataFrame) -> pd.DataFrame:
+    """Per-strategy-type summary over closed legs (CSP vs covered call)."""
+    cols = ["strategy", "n_trades", "win_rate", "avg_premium", "avg_roc",
+            "avg_annualized_roc", "total_realized_pnl"]
+    closed = _closed_legs(legs)
+    if closed.empty:
+        return pd.DataFrame(columns=cols)
+    rows = []
+    for role, grp in closed.groupby("role"):
+        won = grp["won"]
+        rows.append({
+            "strategy": STRATEGY_LABELS.get(role, role),
+            "n_trades": int(len(grp)),
+            "win_rate": float(won.mean()) if won.notna().any() else float("nan"),
+            "avg_premium": float(grp["premium_collected"].mean()),
+            "avg_roc": float(grp["roc"].mean()),
+            "avg_annualized_roc": float(grp["annualized_roc"].mean()),
+            "total_realized_pnl": float(grp["realized_pnl"].sum()),
+        })
+    return pd.DataFrame(rows, columns=cols).sort_values(
+        "total_realized_pnl", ascending=False).reset_index(drop=True)
+
+
+def monthly_yield(legs: pd.DataFrame) -> pd.DataFrame:
+    """Monthly yield on deployed capital: [month, yield_pct, annualized_pct].
+
+    ``yield_pct`` = Σ realized P&L ÷ Σ capital for legs closed that month;
+    ``annualized_pct`` projects it across 12 months. Uses the same closed-leg,
+    close-month basis as :func:`monthly_realized`.
+    """
+    cols = ["month", "yield_pct", "annualized_pct", "realized_pnl", "capital"]
+    closed = _closed_legs(legs)
+    if closed.empty:
+        return pd.DataFrame(columns=cols)
+    closed = closed.copy()
+    closed["month"] = closed["close_time"].dt.to_period("M").dt.to_timestamp()
+    out = closed.groupby("month", as_index=False).agg(
+        realized_pnl=("realized_pnl", "sum"), capital=("capital", "sum"))
+    out["yield_pct"] = out.apply(
+        lambda r: (r["realized_pnl"] / r["capital"]) if r["capital"] else float("nan"),
+        axis=1)
+    out["annualized_pct"] = out["yield_pct"] * 12
+    return out[cols].sort_values("month").reset_index(drop=True)
+
+
 def monthly_premium(deals: pd.DataFrame) -> pd.DataFrame:
     """Premium credits grouped by calendar month: [month, credit]."""
     inflows = premium_inflows(deals)
